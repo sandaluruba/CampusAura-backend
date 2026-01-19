@@ -6,13 +6,27 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
+/**
+ * Firebase Authentication Filter that integrates with Spring Security.
+ * Validates Firebase ID tokens and sets the authentication in SecurityContext.
+ */
 @Component
 public class FirebaseAuthFilter extends OncePerRequestFilter {
+
+  private static final Logger logger = LoggerFactory.getLogger(FirebaseAuthFilter.class);
 
   @Override
   protected void doFilterInternal(HttpServletRequest request,
@@ -24,14 +38,44 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
     if (authHeader != null && authHeader.startsWith("Bearer ")) {
       String token = authHeader.substring(7);
-      try {
-        FirebaseToken decodedToken =
-            FirebaseAuth.getInstance().verifyIdToken(token);
 
-        request.setAttribute("uid", decodedToken.getUid());
-        request.setAttribute("email", decodedToken.getEmail());
+      try {
+        FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+
+        // Create custom principal with user details
+        FirebasePrincipal principal = new FirebasePrincipal(
+            decodedToken.getUid(),
+            decodedToken.getEmail(),
+            decodedToken.getName(),
+            decodedToken.getClaims()
+        );
+
+        // Extract role from Firebase custom claims (defaults to USER if not set)
+        // Future-ready for STUDENT, COORDINATOR, ADMIN roles
+        String role = principal.getRole();
+        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+            new SimpleGrantedAuthority("ROLE_" + role)
+        );
+
+        // Create authentication token and set in SecurityContext
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                authorities
+            );
+
+        authentication.setDetails(
+            new WebAuthenticationDetailsSource().buildDetails(request)
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        logger.debug("Authenticated user: {} with role: {}", decodedToken.getUid(), role);
 
       } catch (Exception e) {
+        logger.error("Firebase token validation failed: {}", e.getMessage());
+        // Set status and let Spring Security handle the response
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         return;
       }
