@@ -40,20 +40,20 @@ public class User {
     // Convert User to Map for Firestore
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
-        map.put("uid", uid);
-        map.put("email", email);
-        map.put("name", name);
-        map.put("userType", userType);
-        map.put("isEmailVerified", isEmailVerified);
-        map.put("isActive", isActive);
-        map.put("createdAt", createdAt);
-        map.put("updatedAt", updatedAt);
+        if (uid != null) map.put("uid", uid);
+        if (email != null) map.put("email", email);
+        if (name != null) map.put("name", name);
+        if (userType != null) map.put("userType", userType);
+        if (isEmailVerified != null) map.put("isEmailVerified", isEmailVerified);
+        if (isActive != null) map.put("isActive", isActive);
+        if (createdAt != null) map.put("createdAt", createdAt);
+        if (updatedAt != null) map.put("updatedAt", updatedAt);
         
         // Only include student fields if user is a student
         if ("STUDENT".equals(userType)) {
-            map.put("degreeProgram", degreeProgram);
-            map.put("studentIdImageUrl", studentIdImageUrl);
-            map.put("isStudentVerified", isStudentVerified);
+            if (degreeProgram != null) map.put("degreeProgram", degreeProgram);
+            if (studentIdImageUrl != null) map.put("studentIdImageUrl", studentIdImageUrl);
+            if (isStudentVerified != null) map.put("isStudentVerified", isStudentVerified);
         }
         
         return map;

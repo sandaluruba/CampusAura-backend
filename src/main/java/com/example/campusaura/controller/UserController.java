@@ -35,10 +35,14 @@ public class UserController {
             UserResponseDTO response = new UserResponseDTO("Student registered successfully", user);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
+            // Check for duplicate user error to return 409 Conflict
+            if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(createErrorResponse(e.getMessage()));
+            }
             return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to register student: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to register student"));
         }
     }
 
@@ -53,10 +57,14 @@ public class UserController {
             UserResponseDTO response = new UserResponseDTO("External user registered successfully", user);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
+            // Check for duplicate user error to return 409 Conflict
+            if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(createErrorResponse(e.getMessage()));
+            }
             return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to register external user: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to register external user"));
         }
     }
 
@@ -72,7 +80,7 @@ public class UserController {
             
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(createErrorResponse("User not found"));
+                        .body(createErrorResponse("User profile not found"));
             }
             
             return ResponseEntity.ok(user);
@@ -80,7 +88,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to retrieve user profile: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to retrieve user profile"));
         }
     }
 
@@ -97,11 +105,15 @@ public class UserController {
             User updatedUser = userService.updateUserProfile(uid, updates);
             return ResponseEntity.ok(updatedUser);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse(e.getMessage()));
+            // Check if it's a "not found" error
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse(e.getMessage()));
+            }
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to update profile: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to update profile"));
         }
     }
 
@@ -119,11 +131,14 @@ public class UserController {
             response.put("uid", uid);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse(e.getMessage()));
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse(e.getMessage()));
+            }
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to delete account: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to delete account"));
         }
     }
 
@@ -139,9 +154,11 @@ public class UserController {
             
             List<User> unverifiedStudents = userService.getAllUnverifiedStudents();
             return ResponseEntity.ok(unverifiedStudents);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to retrieve unverified students: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to retrieve unverified students"));
         }
     }
 
@@ -171,11 +188,14 @@ public class UserController {
             response.put("isVerified", String.valueOf(isVerified));
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(createErrorResponse(e.getMessage()));
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(createErrorResponse(e.getMessage()));
+            }
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to verify student: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to verify student"));
         }
     }
 
@@ -198,9 +218,11 @@ public class UserController {
             }
             
             return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(createErrorResponse("Failed to retrieve user: " + e.getMessage()));
+                    .body(createErrorResponse("Failed to retrieve user"));
         }
     }
 

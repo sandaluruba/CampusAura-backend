@@ -18,6 +18,10 @@ public class UserService {
 
     private static final String COLLECTION_NAME = "users";
     private static final String STUDENT_EMAIL_DOMAIN = "@std.uwu.ac.lk";
+    
+    // User type constants
+    public static final String USER_TYPE_STUDENT = "STUDENT";
+    public static final String USER_TYPE_EXTERNAL = "EXTERNAL";
 
     @Autowired
     private Firestore firestore;
@@ -42,16 +46,6 @@ public class UserService {
             throw new IllegalArgumentException("Degree program is required");
         }
 
-        // Check if user already exists
-        DocumentSnapshot existingUser = firestore.collection(COLLECTION_NAME)
-                .document(dto.getUid())
-                .get()
-                .get();
-        
-        if (existingUser.exists()) {
-            throw new IllegalArgumentException("User already exists with UID: " + dto.getUid());
-        }
-
         String timestamp = Instant.now().toString();
 
         // Create User object
@@ -59,7 +53,7 @@ public class UserService {
         user.setUid(dto.getUid());
         user.setEmail(dto.getEmail());
         user.setName(dto.getName());
-        user.setUserType("STUDENT");
+        user.setUserType(USER_TYPE_STUDENT);
         user.setDegreeProgram(dto.getDegreeProgram());
         user.setStudentIdImageUrl(dto.getStudentIdImageUrl());
         user.setIsStudentVerified(false);
@@ -68,11 +62,20 @@ public class UserService {
         user.setCreatedAt(timestamp);
         user.setUpdatedAt(timestamp);
 
-        // Save to Firestore
-        ApiFuture<WriteResult> result = firestore.collection(COLLECTION_NAME)
-                .document(dto.getUid())
-                .set(user.toMap());
-        result.get(); // Wait for completion
+        // Save to Firestore using create() to prevent race conditions
+        try {
+            ApiFuture<WriteResult> result = firestore.collection(COLLECTION_NAME)
+                    .document(dto.getUid())
+                    .create(user.toMap());
+            result.get(); // Wait for completion
+        } catch (ExecutionException e) {
+            // Check if it's a duplicate document error
+            if (e.getCause() != null && e.getCause().getMessage() != null 
+                && e.getCause().getMessage().contains("ALREADY_EXISTS")) {
+                throw new IllegalArgumentException("User already exists with UID: " + dto.getUid());
+            }
+            throw e;
+        }
 
         return user;
     }
@@ -92,14 +95,9 @@ public class UserService {
             throw new IllegalArgumentException("Name is required");
         }
 
-        // Check if user already exists
-        DocumentSnapshot existingUser = firestore.collection(COLLECTION_NAME)
-                .document(dto.getUid())
-                .get()
-                .get();
-        
-        if (existingUser.exists()) {
-            throw new IllegalArgumentException("User already exists with UID: " + dto.getUid());
+        // Validate email format
+        if (!isValidEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Invalid email format");
         }
 
         String timestamp = Instant.now().toString();
@@ -109,17 +107,26 @@ public class UserService {
         user.setUid(dto.getUid());
         user.setEmail(dto.getEmail());
         user.setName(dto.getName());
-        user.setUserType("EXTERNAL");
+        user.setUserType(USER_TYPE_EXTERNAL);
         user.setIsEmailVerified(false);
         user.setIsActive(true);
         user.setCreatedAt(timestamp);
         user.setUpdatedAt(timestamp);
 
-        // Save to Firestore
-        ApiFuture<WriteResult> result = firestore.collection(COLLECTION_NAME)
-                .document(dto.getUid())
-                .set(user.toMap());
-        result.get(); // Wait for completion
+        // Save to Firestore using create() to prevent race conditions
+        try {
+            ApiFuture<WriteResult> result = firestore.collection(COLLECTION_NAME)
+                    .document(dto.getUid())
+                    .create(user.toMap());
+            result.get(); // Wait for completion
+        } catch (ExecutionException e) {
+            // Check if it's a duplicate document error
+            if (e.getCause() != null && e.getCause().getMessage() != null 
+                && e.getCause().getMessage().contains("ALREADY_EXISTS")) {
+                throw new IllegalArgumentException("User already exists with UID: " + dto.getUid());
+            }
+            throw e;
+        }
 
         return user;
     }
@@ -180,7 +187,7 @@ public class UserService {
         }
 
         // Verify user is a student
-        if (!"STUDENT".equals(user.getUserType())) {
+        if (!USER_TYPE_STUDENT.equals(user.getUserType())) {
             throw new IllegalArgumentException("User is not a student");
         }
 
@@ -202,7 +209,7 @@ public class UserService {
      */
     public List<User> getAllUnverifiedStudents() throws ExecutionException, InterruptedException {
         Query query = firestore.collection(COLLECTION_NAME)
-                .whereEqualTo("userType", "STUDENT")
+                .whereEqualTo("userType", USER_TYPE_STUDENT)
                 .whereEqualTo("isStudentVerified", false);
 
         List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
@@ -240,8 +247,10 @@ public class UserService {
         user.setEmail((String) data.get("email"));
         user.setName((String) data.get("name"));
         user.setUserType((String) data.get("userType"));
-        user.setIsEmailVerified((Boolean) data.get("isEmailVerified"));
-        user.setIsActive((Boolean) data.get("isActive"));
+        
+        // Handle Boolean fields with null safety
+        user.setIsEmailVerified(data.get("isEmailVerified") != null ? (Boolean) data.get("isEmailVerified") : false);
+        user.setIsActive(data.get("isActive") != null ? (Boolean) data.get("isActive") : true);
         
         // Handle timestamps - convert from Firestore Timestamp to String if needed
         Object createdAt = data.get("createdAt");
@@ -259,12 +268,24 @@ public class UserService {
         }
         
         // Student-specific fields
-        if ("STUDENT".equals(user.getUserType())) {
+        if (USER_TYPE_STUDENT.equals(user.getUserType())) {
             user.setDegreeProgram((String) data.get("degreeProgram"));
             user.setStudentIdImageUrl((String) data.get("studentIdImageUrl"));
-            user.setIsStudentVerified((Boolean) data.get("isStudentVerified"));
+            user.setIsStudentVerified(data.get("isStudentVerified") != null ? (Boolean) data.get("isStudentVerified") : false);
         }
         
         return user;
+    }
+    
+    /**
+     * Validate email format using a simple regex
+     */
+    private boolean isValidEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return false;
+        }
+        // Simple email validation regex
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+        return email.matches(emailRegex);
     }
 }
