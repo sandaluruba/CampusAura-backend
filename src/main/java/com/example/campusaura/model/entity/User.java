@@ -7,9 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * User entity representing a user in the system.
- * Stored in Firestore 'users' collection with UID as document ID.
- * Supports both university students and external users.
+ * User entity stored in Firestore.
+ * Represents application user data, separate from Firebase Authentication.
+ *
+ * Document path: users/{uid}
  */
 @Data
 @Builder
@@ -17,54 +18,17 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class User {
 
-    /**
-     * Firebase Authentication UID (unique identifier).
-     * Used as Firestore document ID for 1:1 mapping.
-     */
     private String uid;
-
-    /**
-     * User's email address.
-     * University emails (@std.uwu.ac.lk) get special role privileges.
-     */
     private String email;
-
-    /**
-     * User's display name.
-     */
     private String name;
 
-    /**
-     * User role: STUDENT, COORDINATOR, ADMIN, or EXTERNAL_USER.
-     * Automatically assigned based on email domain during registration.
-     */
-    private String role;
+    private String role;      // STUDENT, COORDINATOR, ADMIN, EXTERNAL_USER
+    private boolean verified; // student ID verified or not
 
-    /**
-     * Verification status.
-     * True if user has been verified by admin/coordinator.
-     */
-    private boolean verified;
+    // Student-specific fields
+    private String degreeProgram;  // For STUDENT role only
+    private String studentIdUrl;   // URL to uploaded student ID image (Firebase Storage)
 
-    /**
-     * Degree program (STUDENT only).
-     * Populated during student registration.
-     */
-    private String degreeProgram;
-
-    /**
-     * URL to student ID image in Firebase Storage (STUDENT only).
-     * Used for verification purposes.
-     */
-    private String studentIdUrl;
-
-    /**
-     * Timestamp when user was created.
-     */
     private Timestamp createdAt;
-
-    /**
-     * Timestamp when user was last updated.
-     */
     private Timestamp updatedAt;
 }
