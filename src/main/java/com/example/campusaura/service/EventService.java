@@ -1,6 +1,8 @@
 package com.example.campusaura.service;
 
 import com.example.campusaura.dto.EventRequestDTO;
+import com.example.campusaura.dto.EventResponseDTO;
+import com.example.campusaura.dto.LandingPageEventDTO;
 import com.example.campusaura.model.Event;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
@@ -59,7 +61,18 @@ public class EventService {
     }
 
     /**
-     * Get event by ID
+     * Get event by ID (returns DTO)
+     */
+    public EventResponseDTO getEventByIdDTO(String eventId) throws ExecutionException, InterruptedException {
+        Event event = getEventById(eventId);
+        if (event == null) {
+            throw new RuntimeException("Event not found with id: " + eventId);
+        }
+        return eventToResponseDTO(event);
+    }
+
+    /**
+     * Get event by ID (returns Event object)
      */
     public Event getEventById(String eventId) throws ExecutionException, InterruptedException {
         DocumentSnapshot document = firestore.collection(COLLECTION_NAME)
@@ -75,9 +88,9 @@ public class EventService {
     }
 
     /**
-     * Get all events
+     * Get all events (returns Event objects)
      */
-    public List<Event> getAllEvents() throws ExecutionException, InterruptedException {
+    public List<Event> getAllEventsInternal() throws ExecutionException, InterruptedException {
         List<QueryDocumentSnapshot> documents = firestore.collection(COLLECTION_NAME)
                 .get()
                 .get()
@@ -86,6 +99,50 @@ public class EventService {
         return documents.stream()
                 .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all events (returns DTOs)
+     */
+    public List<EventResponseDTO> getAllEvents() throws ExecutionException, InterruptedException {
+        List<QueryDocumentSnapshot> documents = firestore.collection(COLLECTION_NAME)
+                .get()
+                .get()
+                .getDocuments();
+
+        return documents.stream()
+                .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
+                .map(this::eventToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get events by category
+     */
+    public List<EventResponseDTO> getEventsByCategory(String category) throws ExecutionException, InterruptedException {
+        Query query = firestore.collection(COLLECTION_NAME)
+                .whereEqualTo("category", category);
+
+        List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
+
+        return documents.stream()
+                .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
+                .map(this::eventToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Delete event
+     */
+    public void deleteEvent(String eventId) throws ExecutionException, InterruptedException {
+        DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(eventId);
+        DocumentSnapshot document = docRef.get().get();
+
+        if (!document.exists()) {
+            throw new RuntimeException("Event not found with id: " + eventId);
+        }
+
+        docRef.delete().get();
     }
 
     /**
@@ -283,5 +340,82 @@ public class EventService {
         }
         
         return event;
+    }
+
+    /**
+     * Get recent events
+     */
+    public List<EventResponseDTO> getRecentEvents(int limit) throws ExecutionException, InterruptedException {
+        Query query = firestore.collection(COLLECTION_NAME)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limit);
+        
+        ApiFuture<QuerySnapshot> future = query.get();
+        List<QueryDocumentSnapshot> documents = future.get().getDocuments();
+
+        return documents.stream()
+                .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
+                .map(this::eventToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get random ongoing events for landing page carousel
+     */
+    public List<LandingPageEventDTO> getRandomOngoingEvents(int limit) throws ExecutionException, InterruptedException {
+        // Query for events with status "PUBLISHED" or "ONGOING"
+        Query query = firestore.collection(COLLECTION_NAME)
+                .whereIn("status", Arrays.asList("PUBLISHED", "ONGOING"));
+        
+        List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
+        
+        // Convert to Event objects
+        List<Event> events = documents.stream()
+                .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
+                .collect(Collectors.toList());
+        
+        // Shuffle and return limited results as DTOs
+        Collections.shuffle(events);
+        return events.stream()
+                .limit(limit)
+                .map(this::eventToLandingPageDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert Event to LandingPageEventDTO
+     */
+    private LandingPageEventDTO eventToLandingPageDTO(Event event) {
+        LandingPageEventDTO dto = new LandingPageEventDTO();
+        dto.setEventId(event.getEventId());
+        dto.setTitle(event.getTitle());
+        dto.setDescription(event.getDescription());
+        dto.setVenue(event.getVenue());
+        dto.setDateTime(event.getDateTime());
+        dto.setEventImageUrls(event.getEventImageUrls());
+        dto.setOrganizingDepartment(event.getOrganizingDepartment());
+        return dto;
+    }
+
+    /**
+     * Convert Event to EventResponseDTO
+     */
+    private EventResponseDTO eventToResponseDTO(Event event) {
+        EventResponseDTO dto = new EventResponseDTO();
+        dto.setEventId(event.getEventId());
+        dto.setTitle(event.getTitle());
+        dto.setVenue(event.getVenue());
+        dto.setDateTime(event.getDateTime());
+        dto.setTicketsAvailable(event.getTicketsAvailable());
+        dto.setTicketCategories(event.getTicketCategories());
+        dto.setPastEventDetails(event.getPastEventDetails());
+        dto.setEventImageUrls(event.getEventImageUrls());
+        dto.setSellItems(event.getSellItems());
+        dto.setDescription(event.getDescription());
+        dto.setOrganizingDepartment(event.getOrganizingDepartment());
+        dto.setStatus(event.getStatus());
+        dto.setCreatedAt(event.getCreatedAt());
+        dto.setUpdatedAt(event.getUpdatedAt());
+        return dto;
     }
 }

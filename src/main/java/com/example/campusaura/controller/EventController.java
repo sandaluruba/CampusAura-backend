@@ -2,6 +2,7 @@ package com.example.campusaura.controller;
 
 import com.example.campusaura.dto.EventRequestDTO;
 import com.example.campusaura.dto.EventResponseDTO;
+import com.example.campusaura.dto.LandingPageEventDTO;
 import com.example.campusaura.model.Event;
 import com.example.campusaura.service.EventService;
 import com.google.firebase.auth.FirebaseAuth;
@@ -127,6 +128,22 @@ public class EventController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorResponse("Failed to retrieve your events: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get random ongoing events for landing page (PUBLIC - no authentication required)
+     * GET /api/events/landing-page
+     */
+    @GetMapping("/landing-page")
+    public ResponseEntity<?> getLandingPageEvents() {
+        try {
+            // Get 5 random ongoing events
+            List<LandingPageEventDTO> events = eventService.getRandomOngoingEvents(5);
+            return ResponseEntity.ok(events);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Failed to retrieve landing page events: " + e.getMessage()));
         }
     }
 
