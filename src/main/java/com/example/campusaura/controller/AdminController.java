@@ -25,7 +25,7 @@ public class AdminController {
     private CoordinatorService coordinatorService;
 
     @Autowired
-    private UserService userService;
+    private UserManagementService userManagementService;
 
     @Autowired
     private EventService eventService;
@@ -234,7 +234,7 @@ public class AdminController {
     @GetMapping("/users")
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
         try {
-            List<UserResponseDTO> users = userService.getAllUsers();
+            List<UserResponseDTO> users = userManagementService.getAllUsers();
             return ResponseEntity.ok(users);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -248,7 +248,7 @@ public class AdminController {
     @GetMapping("/users/university-students")
     public ResponseEntity<List<UserResponseDTO>> getUniversityStudents() {
         try {
-            List<UserResponseDTO> users = userService.getUsersByType(User.UserType.UNIVERSITY_STUDENT);
+            List<UserResponseDTO> users = userManagementService.getUsersByType(User.UserType.UNIVERSITY_STUDENT);
             return ResponseEntity.ok(users);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -262,7 +262,7 @@ public class AdminController {
     @GetMapping("/users/external-users")
     public ResponseEntity<List<UserResponseDTO>> getExternalUsers() {
         try {
-            List<UserResponseDTO> users = userService.getUsersByType(User.UserType.EXTERNAL_USER);
+            List<UserResponseDTO> users = userManagementService.getUsersByType(User.UserType.EXTERNAL_USER);
             return ResponseEntity.ok(users);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -276,7 +276,7 @@ public class AdminController {
     @GetMapping("/users/pending-verification")
     public ResponseEntity<List<UserResponseDTO>> getPendingVerificationUsers() {
         try {
-            List<UserResponseDTO> users = userService.getPendingVerificationUsers();
+            List<UserResponseDTO> users = userManagementService.getPendingVerificationUsers();
             return ResponseEntity.ok(users);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -290,7 +290,7 @@ public class AdminController {
     @GetMapping("/users/stats")
     public ResponseEntity<UserStatsDTO> getUserStats() {
         try {
-            UserStatsDTO stats = userService.getUserStats();
+            UserStatsDTO stats = userManagementService.getUserStats();
             return ResponseEntity.ok(stats);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -307,7 +307,7 @@ public class AdminController {
             @RequestBody Map<String, Boolean> statusUpdate) {
         try {
             boolean active = statusUpdate.get("active");
-            UserResponseDTO user = userService.updateUserStatus(id, active);
+            UserResponseDTO user = userManagementService.updateUserStatus(id, active);
             return ResponseEntity.ok(user);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -327,7 +327,7 @@ public class AdminController {
         try {
             String statusStr = verificationUpdate.get("status");
             User.VerificationStatus status = User.VerificationStatus.valueOf(statusStr);
-            UserResponseDTO user = userService.verifyStudent(id, status);
+            UserResponseDTO user = userManagementService.verifyStudent(id, status);
             return ResponseEntity.ok(user);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -343,7 +343,7 @@ public class AdminController {
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Map<String, String>> deleteUser(@PathVariable String id) {
         try {
-            userService.deleteUser(id);
+            userManagementService.deleteUser(id);
             Map<String, String> response = new HashMap<>();
             response.put("message", "User deleted successfully");
             return ResponseEntity.ok(response);
