@@ -18,6 +18,7 @@ public class EventRequestDTO {
     private String description;
     private String organizingDepartment;
     private String status;
+    private String category;
 
     public EventRequestDTO() {
     }
@@ -25,7 +26,7 @@ public class EventRequestDTO {
     public EventRequestDTO(String title, String venue, String dateTime, Boolean ticketsAvailable,
                            List<TicketCategory> ticketCategories, List<PastEventDetail> pastEventDetails,
                            List<String> eventImageUrls, List<SellItem> sellItems, String description,
-                           String organizingDepartment, String status) {
+                           String organizingDepartment, String status, String category) {
         this.title = title;
         this.venue = venue;
         this.dateTime = dateTime;
@@ -37,6 +38,7 @@ public class EventRequestDTO {
         this.description = description;
         this.organizingDepartment = organizingDepartment;
         this.status = status;
+        this.category = category;
     }
 
     // Getters and Setters
@@ -126,5 +128,13 @@ public class EventRequestDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

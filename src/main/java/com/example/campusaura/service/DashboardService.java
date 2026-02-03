@@ -30,9 +30,9 @@ public class DashboardService {
         long totalEvents = getCollectionCount("events");
         stats.setTotalEvents(totalEvents);
 
-        // Get total users count
-        long totalUsers = getCollectionCount("users");
-        stats.setTotalUsers(totalUsers);
+        // Get total active users count
+        long activeUsers = getCollectionCount("users");
+        stats.setActiveUsers(activeUsers);
 
         // Get total products count
         long totalProducts = getCollectionCount("products");
@@ -45,6 +45,15 @@ public class DashboardService {
         // Get 5 recent events
         List<EventResponseDTO> recentEvents = eventService.getRecentEvents(5);
         stats.setRecentEvents(recentEvents);
+
+        // TODO: Implement percentage changes calculation
+        // stats.setEventsPercentageChange(calculatePercentageChange(...));
+        // stats.setUsersPercentageChange(calculatePercentageChange(...));
+        // stats.setProductsPercentageChange(calculatePercentageChange(...));
+        
+        // TODO: Implement top coordinators fetching
+        // List<TopCoordinatorDTO> topCoordinators = getTopCoordinators(5);
+        // stats.setTopCoordinators(topCoordinators);
 
         return stats;
     }

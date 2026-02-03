@@ -2,6 +2,7 @@ package com.example.campusaura.controller;
 
 import com.example.campusaura.dto.*;
 import com.example.campusaura.model.User;
+import com.example.campusaura.model.Product;
 import com.example.campusaura.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -161,6 +162,32 @@ public class AdminController {
         return ResponseEntity.ok(programmes);
     }
 
+    /**
+     * Get departments for dropdown (same as degree programmes for now)
+     * GET /api/admin/coordinators/departments
+     */
+    @GetMapping("/coordinators/departments")
+    public ResponseEntity<List<String>> getDepartments() {
+        List<String> departments = List.of(
+            "Animal Production and Food Technology",
+            "Export Agriculture",
+            "Aquatic Resources Technology",
+            "Tea Technology and Value Addition",
+            "Computer Science and Technology",
+            "Industrial Information Technology",
+            "Science & Technology",
+            "Mineral Resources and Technology",
+            "Entrepreneurship & Management Studies",
+            "Hospitality, Tourism & Events Management",
+            "Human Resource Development",
+            "English Language & Applied Linguistics",
+            "Engineering Technology",
+            "Biosystems Technology Honours",
+            "Information and Communication Technology Honours"
+        );
+        return ResponseEntity.ok(departments);
+    }
+
     // ==================== EVENT MANAGEMENT SECTION ====================
 
     /**
@@ -220,6 +247,54 @@ public class AdminController {
         try {
             List<EventResponseDTO> events = eventService.getEventsByCategory(category);
             return ResponseEntity.ok(events);
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Approve event
+     * POST /api/admin/events/{id}/approve
+     */
+    @PostMapping("/events/{id}/approve")
+    public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable String id) {
+        try {
+            EventResponseDTO event = eventService.updateEventStatus(id, "APPROVED");
+            return ResponseEntity.ok(event);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Reject event
+     * POST /api/admin/events/{id}/reject
+     */
+    @PostMapping("/events/{id}/reject")
+    public ResponseEntity<EventResponseDTO> rejectEvent(@PathVariable String id) {
+        try {
+            EventResponseDTO event = eventService.updateEventStatus(id, "REJECTED");
+            return ResponseEntity.ok(event);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get pending events count
+     * GET /api/admin/events/pending/count
+     */
+    @GetMapping("/events/pending/count")
+    public ResponseEntity<Map<String, Long>> getPendingEventsCount() {
+        try {
+            long count = eventService.getPendingEventsCount();
+            Map<String, Long> response = new HashMap<>();
+            response.put("count", count);
+            return ResponseEntity.ok(response);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -399,6 +474,54 @@ public class AdminController {
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Approve product
+     * POST /api/admin/products/{id}/approve
+     */
+    @PostMapping("/products/{id}/approve")
+    public ResponseEntity<ProductResponseDTO> approveProduct(@PathVariable String id) {
+        try {
+            ProductResponseDTO product = productService.updateProductStatus(id, Product.ProductStatus.APPROVED);
+            return ResponseEntity.ok(product);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Disable product
+     * POST /api/admin/products/{id}/disable
+     */
+    @PostMapping("/products/{id}/disable")
+    public ResponseEntity<ProductResponseDTO> disableProduct(@PathVariable String id) {
+        try {
+            ProductResponseDTO product = productService.updateProductStatus(id, Product.ProductStatus.DELETED);
+            return ResponseEntity.ok(product);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get pending products count
+     * GET /api/admin/products/pending/count
+     */
+    @GetMapping("/products/pending/count")
+    public ResponseEntity<Map<String, Long>> getPendingProductsCount() {
+        try {
+            long count = productService.getPendingProductsCount();
+            Map<String, Long> response = new HashMap<>();
+            response.put("count", count);
+            return ResponseEntity.ok(response);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

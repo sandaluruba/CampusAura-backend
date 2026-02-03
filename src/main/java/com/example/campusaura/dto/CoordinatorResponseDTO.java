@@ -8,8 +8,12 @@ public class CoordinatorResponseDTO {
     private String lastName;
     private String phoneNumber;
     private String email;
-    private String degreeProgramme;
+    private String department;
+    private String degree;
+    private String shortIntroduction;
+    private String degreeProgramme; // Legacy field
     private boolean active;
+    private int eventCount;
     private LocalDateTime createdAt;
 
     // Constructors
@@ -62,6 +66,38 @@ public class CoordinatorResponseDTO {
 
     public void setDegreeProgramme(String degreeProgramme) {
         this.degreeProgramme = degreeProgramme;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getDegree() {
+        return degree;
+    }
+
+    public void setDegree(String degree) {
+        this.degree = degree;
+    }
+
+    public String getShortIntroduction() {
+        return shortIntroduction;
+    }
+
+    public void setShortIntroduction(String shortIntroduction) {
+        this.shortIntroduction = shortIntroduction;
+    }
+
+    public int getEventCount() {
+        return eventCount;
+    }
+
+    public void setEventCount(int eventCount) {
+        this.eventCount = eventCount;
     }
 
     public boolean isActive() {

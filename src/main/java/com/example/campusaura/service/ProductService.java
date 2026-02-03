@@ -147,4 +147,37 @@ public class ProductService {
         dto.setSoldAt(product.getSoldAt());
         return dto;
     }
+
+    /**
+     * Update product status (for admin approval/rejection)
+     */
+    public ProductResponseDTO updateProductStatus(String id, Product.ProductStatus status) 
+            throws ExecutionException, InterruptedException {
+        DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
+        DocumentSnapshot document = docRef.get().get();
+
+        if (!document.exists()) {
+            throw new RuntimeException("Product not found with id: " + id);
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", status.toString());
+        updates.put("updatedAt", LocalDateTime.now().toString());
+
+        docRef.update(updates).get();
+
+        // Return updated product
+        Product product = documentToProduct(docRef.get().get());
+        return productToDTO(product);
+    }
+
+    /**
+     * Get count of pending products (for admin dashboard)
+     */
+    public long getPendingProductsCount() throws ExecutionException, InterruptedException {
+        Query query = firestore.collection(COLLECTION_NAME)
+                .whereEqualTo("status", Product.ProductStatus.PENDING.toString());
+        ApiFuture<QuerySnapshot> future = query.get();
+        return future.get().getDocuments().size();
+    }
 }

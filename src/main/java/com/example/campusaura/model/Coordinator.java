@@ -8,7 +8,10 @@ public class Coordinator {
     private String lastName;
     private String phoneNumber;
     private String email;
-    private String degreeProgramme;
+    private String department;
+    private String degree;
+    private String shortIntroduction;
+    private String degreeProgramme; // Legacy field
     private boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -21,13 +24,15 @@ public class Coordinator {
     }
 
     public Coordinator(String id, String firstName, String lastName, String phoneNumber, 
-                       String email, String degreeProgramme) {
+                       String email, String department, String degree, String shortIntroduction) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.phoneNumber = phoneNumber;
         this.email = email;
-        this.degreeProgramme = degreeProgramme;
+        this.department = department;
+        this.degree = degree;
+        this.shortIntroduction = shortIntroduction;
         this.active = true;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
@@ -80,6 +85,30 @@ public class Coordinator {
 
     public void setDegreeProgramme(String degreeProgramme) {
         this.degreeProgramme = degreeProgramme;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getDegree() {
+        return degree;
+    }
+
+    public void setDegree(String degree) {
+        this.degree = degree;
+    }
+
+    public String getShortIntroduction() {
+        return shortIntroduction;
+    }
+
+    public void setShortIntroduction(String shortIntroduction) {
+        this.shortIntroduction = shortIntroduction;
     }
 
     public boolean isActive() {

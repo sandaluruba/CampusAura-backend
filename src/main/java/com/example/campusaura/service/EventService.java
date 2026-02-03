@@ -1,9 +1,13 @@
 package com.example.campusaura.service;
 
+import com.example.campusaura.dto.EventDetailDTO;
 import com.example.campusaura.dto.EventRequestDTO;
 import com.example.campusaura.dto.EventResponseDTO;
 import com.example.campusaura.dto.LandingPageEventDTO;
 import com.example.campusaura.model.Event;
+import com.example.campusaura.model.PastEventDetail;
+import com.example.campusaura.model.SellItem;
+import com.example.campusaura.model.TicketCategory;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +49,8 @@ public class EventService {
         event.setDescription(eventRequest.getDescription());
         event.setOrganizingDepartment(eventRequest.getOrganizingDepartment());
         event.setStatus(eventRequest.getStatus() != null ? eventRequest.getStatus() : "DRAFT");
+        event.setCategory(eventRequest.getCategory());
+        event.setAttendeeCount(0);  // Initialize with 0 attendees
         event.setCreatedAt(timestamp);
         event.setUpdatedAt(timestamp);
 
@@ -216,6 +222,9 @@ public class EventService {
         if (eventRequest.getStatus() != null) {
             existingEvent.setStatus(eventRequest.getStatus());
         }
+        if (eventRequest.getCategory() != null) {
+            existingEvent.setCategory(eventRequest.getCategory());
+        }
         existingEvent.setUpdatedAt(Instant.now().toString());
 
         // Convert to Map for Firestore
@@ -300,6 +309,8 @@ public class EventService {
         map.put("description", event.getDescription());
         map.put("organizingDepartment", event.getOrganizingDepartment());
         map.put("status", event.getStatus());
+        map.put("category", event.getCategory());
+        map.put("attendeeCount", event.getAttendeeCount());
         map.put("createdAt", event.getCreatedAt());
         map.put("updatedAt", event.getUpdatedAt());
         return map;
@@ -316,13 +327,83 @@ public class EventService {
         event.setVenue((String) data.get("venue"));
         event.setDateTime((String) data.get("dateTime"));
         event.setTicketsAvailable((Boolean) data.get("ticketsAvailable"));
-        event.setTicketCategories((List) data.get("ticketCategories"));
-        event.setPastEventDetails((List) data.get("pastEventDetails"));
+        
+        // Convert ticketCategories from List<Map> to List<TicketCategory>
+        List<com.example.campusaura.model.TicketCategory> ticketCategories = new ArrayList<>();
+        Object ticketCategoriesObj = data.get("ticketCategories");
+        if (ticketCategoriesObj instanceof List) {
+            for (Object item : (List) ticketCategoriesObj) {
+                if (item instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) item;
+                    com.example.campusaura.model.TicketCategory category = new com.example.campusaura.model.TicketCategory();
+                    category.setCategoryName((String) map.get("categoryName"));
+                    Object price = map.get("price");
+                    if (price instanceof Number) {
+                        category.setPrice(((Number) price).doubleValue());
+                    }
+                    ticketCategories.add(category);
+                }
+            }
+        }
+        event.setTicketCategories(ticketCategories);
+        
+        // Convert pastEventDetails from List<Map> to List<PastEventDetail>
+        List<PastEventDetail> pastEventDetails = new ArrayList<>();
+        Object pastEventDetailsObj = data.get("pastEventDetails");
+        if (pastEventDetailsObj instanceof List) {
+            for (Object item : (List) pastEventDetailsObj) {
+                if (item instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) item;
+                    PastEventDetail detail = new PastEventDetail();
+                    detail.setEventId((String) map.get("eventId"));
+                    detail.setTitle((String) map.get("title"));
+                    detail.setDescription((String) map.get("description"));
+                    detail.setDate((String) map.get("date"));
+                    detail.setImageUrls((List<String>) map.get("imageUrls"));
+                    detail.setOutcome((String) map.get("outcome"));
+                    pastEventDetails.add(detail);
+                }
+            }
+        }
+        event.setPastEventDetails(pastEventDetails);
+        
         event.setEventImageUrls((List) data.get("eventImageUrls"));
-        event.setSellItems((List) data.get("sellItems"));
+        
+        // Convert sellItems from List<Map> to List<SellItem>
+        List<SellItem> sellItems = new ArrayList<>();
+        Object sellItemsObj = data.get("sellItems");
+        if (sellItemsObj instanceof List) {
+            for (Object item : (List) sellItemsObj) {
+                if (item instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) item;
+                    SellItem sellItem = new SellItem();
+                    sellItem.setItemName((String) map.get("itemName"));
+                    sellItem.setDescription((String) map.get("description"));
+                    Object price = map.get("price");
+                    if (price instanceof Number) {
+                        sellItem.setPrice(((Number) price).doubleValue());
+                    }
+                    sellItem.setImageUrls((List<String>) map.get("imageUrls"));
+                    sellItems.add(sellItem);
+                }
+            }
+        }
+        event.setSellItems(sellItems);
+        
         event.setDescription((String) data.get("description"));
         event.setOrganizingDepartment((String) data.get("organizingDepartment"));
         event.setStatus((String) data.get("status"));
+        event.setCategory((String) data.get("category"));
+        
+        // Handle attendeeCount - convert from Long to Integer if needed
+        Object attendeeCount = data.get("attendeeCount");
+        if (attendeeCount instanceof Long) {
+            event.setAttendeeCount(((Long) attendeeCount).intValue());
+        } else if (attendeeCount instanceof Integer) {
+            event.setAttendeeCount((Integer) attendeeCount);
+        } else {
+            event.setAttendeeCount(0);
+        }
         
         // Handle timestamps - convert from Firestore Timestamp to String if needed
         Object createdAt = data.get("createdAt");
@@ -383,6 +464,107 @@ public class EventService {
     }
 
     /**
+     * Get latest published events for landing page
+     */
+    public List<LandingPageEventDTO> getLatestEvents(int limit) throws ExecutionException, InterruptedException {
+        // Query for events with status "PUBLISHED" or "ONGOING"
+        Query query = firestore.collection(COLLECTION_NAME)
+                .whereIn("status", Arrays.asList("PUBLISHED", "ONGOING"));
+        
+        List<QueryDocumentSnapshot> documents = query.get().get().getDocuments();
+        
+        // Convert to Event objects and sort by dateTime descending
+        List<Event> events = documents.stream()
+                .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
+                .filter(event -> event.getDateTime() != null) // Filter out events without dateTime
+                .sorted((e1, e2) -> e2.getDateTime().compareTo(e1.getDateTime())) // Sort descending (latest first)
+                .collect(Collectors.toList());
+        
+        // Return limited results as DTOs
+        return events.stream()
+                .limit(limit)
+                .map(this::eventToLandingPageDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all published events for public events page
+     * Supports category filtering and sorting
+     */
+    public List<LandingPageEventDTO> getPublicEvents(String category, String sortBy) throws ExecutionException, InterruptedException {
+        // Get all events (no status filter for now to include all events)
+        List<QueryDocumentSnapshot> documents = firestore.collection(COLLECTION_NAME)
+                .get()
+                .get()
+                .getDocuments();
+        
+        // Convert to Event objects
+        List<Event> events = documents.stream()
+                .map(doc -> convertMapToEvent(doc.getId(), doc.getData()))
+                .filter(event -> {
+                    // Include events with PUBLISHED, ONGOING status, or events without status (for testing)
+                    String status = event.getStatus();
+                    return status == null || 
+                           status.equalsIgnoreCase("PUBLISHED") || 
+                           status.equalsIgnoreCase("ONGOING") ||
+                           status.equalsIgnoreCase("DRAFT"); // Include DRAFT for testing
+                })
+                .collect(Collectors.toList());
+        
+        // Filter by category if specified (and not "All")
+        if (category != null && !category.isEmpty() && !category.equalsIgnoreCase("All")) {
+            events = events.stream()
+                    .filter(event -> category.equalsIgnoreCase(event.getCategory()))
+                    .collect(Collectors.toList());
+        }
+        
+        // Sort events based on sortBy parameter
+        if ("upcoming".equalsIgnoreCase(sortBy)) {
+            // Sort by dateTime ascending (upcoming first), handle nulls
+            events.sort((e1, e2) -> {
+                String date1 = e1.getDateTime();
+                String date2 = e2.getDateTime();
+                if (date1 == null && date2 == null) return 0;
+                if (date1 == null) return 1;
+                if (date2 == null) return -1;
+                return date1.compareTo(date2);
+            });
+        } else if ("latest".equalsIgnoreCase(sortBy)) {
+            // Sort by createdAt descending (latest created first)
+            events.sort((e1, e2) -> {
+                String date1 = e1.getCreatedAt();
+                String date2 = e2.getCreatedAt();
+                if (date1 == null && date2 == null) return 0;
+                if (date1 == null) return 1;
+                if (date2 == null) return -1;
+                return date2.compareTo(date1);
+            });
+        } else if ("popular".equalsIgnoreCase(sortBy)) {
+            // Sort by attendeeCount descending (most popular first)
+            events.sort((e1, e2) -> {
+                Integer count1 = e1.getAttendeeCount() != null ? e1.getAttendeeCount() : 0;
+                Integer count2 = e2.getAttendeeCount() != null ? e2.getAttendeeCount() : 0;
+                return count2.compareTo(count1);
+            });
+        } else {
+            // Default: sort by createdAt descending (newest first)
+            events.sort((e1, e2) -> {
+                String date1 = e1.getCreatedAt();
+                String date2 = e2.getCreatedAt();
+                if (date1 == null && date2 == null) return 0;
+                if (date1 == null) return 1;
+                if (date2 == null) return -1;
+                return date2.compareTo(date1);
+            });
+        }
+        
+        // Convert to DTOs
+        return events.stream()
+                .map(this::eventToLandingPageDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Convert Event to LandingPageEventDTO
      */
     private LandingPageEventDTO eventToLandingPageDTO(Event event) {
@@ -394,6 +576,8 @@ public class EventService {
         dto.setDateTime(event.getDateTime());
         dto.setEventImageUrls(event.getEventImageUrls());
         dto.setOrganizingDepartment(event.getOrganizingDepartment());
+        dto.setCategory(event.getCategory());
+        dto.setAttendeeCount(event.getAttendeeCount() != null ? event.getAttendeeCount() : 0);
         return dto;
     }
 
@@ -416,6 +600,131 @@ public class EventService {
         dto.setStatus(event.getStatus());
         dto.setCreatedAt(event.getCreatedAt());
         dto.setUpdatedAt(event.getUpdatedAt());
+        return dto;
+    }
+
+    /**
+     * Update event status (for admin approval/rejection)
+     */
+    public EventResponseDTO updateEventStatus(String eventId, String status) 
+            throws ExecutionException, InterruptedException {
+        Event existingEvent = getEventById(eventId);
+        if (existingEvent == null) {
+            throw new RuntimeException("Event not found with ID: " + eventId);
+        }
+
+        existingEvent.setStatus(status);
+        existingEvent.setUpdatedAt(Instant.now().toString());
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", status);
+        updates.put("updatedAt", existingEvent.getUpdatedAt());
+
+        ApiFuture<WriteResult> result = firestore.collection(COLLECTION_NAME)
+                .document(eventId)
+                .update(updates);
+        result.get();
+
+        return eventToResponseDTO(existingEvent);
+    }
+
+    /**
+     * Get count of pending events (for admin dashboard)
+     */
+    public long getPendingEventsCount() throws ExecutionException, InterruptedException {
+        Query query = firestore.collection(COLLECTION_NAME)
+                .whereEqualTo("status", "PENDING");
+        ApiFuture<QuerySnapshot> future = query.get();
+        return future.get().getDocuments().size();
+    }
+
+    /**
+     * Get event count by coordinator ID
+     */
+    public int getEventCountByCoordinator(String coordinatorId) throws ExecutionException, InterruptedException {
+        Query query = firestore.collection(COLLECTION_NAME)
+                .whereEqualTo("coordinatorId", coordinatorId);
+        ApiFuture<QuerySnapshot> future = query.get();
+        return future.get().getDocuments().size();
+    }
+
+    /**
+     * Get full event details for public event detail page
+     */
+    public EventDetailDTO getEventDetailById(String eventId) throws ExecutionException, InterruptedException {
+        Event event = getEventById(eventId);
+        if (event == null) {
+            throw new RuntimeException("Event not found with id: " + eventId);
+        }
+        return eventToDetailDTO(event);
+    }
+
+    /**
+     * Convert Event to EventDetailDTO with all details for event detail page
+     */
+    private EventDetailDTO eventToDetailDTO(Event event) {
+        EventDetailDTO dto = new EventDetailDTO();
+        
+        // Basic event information
+        dto.setEventId(event.getEventId());
+        dto.setTitle(event.getTitle());
+        dto.setDescription(event.getDescription());
+        dto.setVenue(event.getVenue());
+        dto.setDateTime(event.getDateTime());
+        dto.setCategory(event.getCategory());
+        dto.setAttendeeCount(event.getAttendeeCount() != null ? event.getAttendeeCount() : 0);
+        dto.setEventImageUrls(event.getEventImageUrls());
+        dto.setOrganizingDepartment(event.getOrganizingDepartment());
+        dto.setStatus(event.getStatus());
+        
+        // Ticket information
+        dto.setTicketsAvailable(event.getTicketsAvailable());
+        dto.setTicketCategories(event.getTicketCategories());
+        dto.setTotalSpots(500); // Default total spots
+        dto.setAvailableSpots(180); // Default available spots (can be calculated from actual bookings)
+        
+        // Extract schedule from pastEventDetails if available
+        List<EventDetailDTO.ScheduleItem> schedule = new ArrayList<>();
+        if (event.getPastEventDetails() != null && !event.getPastEventDetails().isEmpty()) {
+            // For now, we'll create default schedule items
+            // You can enhance this to extract from pastEventDetails structure
+            schedule.add(new EventDetailDTO.ScheduleItem("10:00 AM", "Event Opens"));
+            schedule.add(new EventDetailDTO.ScheduleItem("11:00 AM", "Main Program"));
+            schedule.add(new EventDetailDTO.ScheduleItem("1:00 PM", "Networking Session"));
+        }
+        dto.setSchedule(schedule);
+        
+        // Extract gallery images from pastEventDetails
+        List<String> galleryImages = new ArrayList<>();
+        if (event.getPastEventDetails() != null) {
+            for (PastEventDetail detail : event.getPastEventDetails()) {
+                if (detail.getImageUrls() != null) {
+                    galleryImages.addAll(detail.getImageUrls());
+                }
+            }
+        }
+        dto.setGalleryImages(galleryImages);
+        
+        // Convert sellItems to sponsors
+        List<EventDetailDTO.Sponsor> sponsors = new ArrayList<>();
+        if (event.getSellItems() != null && !event.getSellItems().isEmpty()) {
+            for (SellItem item : event.getSellItems()) {
+                EventDetailDTO.Sponsor sponsor = new EventDetailDTO.Sponsor();
+                sponsor.setName(item.getItemName());
+                sponsor.setTier("Standard");
+                sponsor.setAmount(item.getPrice() != null ? "$" + item.getPrice() : "TBA");
+                sponsor.setLogo("🏢"); // Default logo
+                sponsors.add(sponsor);
+            }
+        }
+        // If no sponsors from sellItems, add default sponsors
+        if (sponsors.isEmpty()) {
+            sponsors.add(new EventDetailDTO.Sponsor("Platinum", "$10,000+", "🏢", "Platinum Sponsor"));
+            sponsors.add(new EventDetailDTO.Sponsor("Gold", "$5,000+", "⭐", "Gold Sponsor"));
+            sponsors.add(new EventDetailDTO.Sponsor("Silver", "$1,000+", "🎯", "Silver Sponsor"));
+        }
+        dto.setSponsors(sponsors);
+        
         return dto;
     }
 }

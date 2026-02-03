@@ -19,6 +19,9 @@ public class CoordinatorService {
     @Autowired
     private Firestore firestore;
 
+    @Autowired
+    private EventService eventService;
+
     private static final String COLLECTION_NAME = "coordinators";
 
     // Register a new coordinator
@@ -28,7 +31,16 @@ public class CoordinatorService {
         coordinator.setLastName(request.getLastName());
         coordinator.setPhoneNumber(request.getPhoneNumber());
         coordinator.setEmail(request.getEmail());
-        coordinator.setDegreeProgramme(request.getDegreeProgramme());
+        
+        // Set new fields
+        coordinator.setDepartment(request.getDepartment());
+        coordinator.setDegree(request.getDegree());
+        coordinator.setShortIntroduction(request.getShortIntroduction());
+        
+        // Keep backward compatibility
+        coordinator.setDegreeProgramme(request.getDegreeProgramme() != null ? 
+            request.getDegreeProgramme() : request.getDepartment());
+        
         coordinator.setActive(true);
         coordinator.setCreatedAt(LocalDateTime.now());
         coordinator.setUpdatedAt(LocalDateTime.now());
@@ -40,7 +52,7 @@ public class CoordinatorService {
         Map<String, Object> data = coordinatorToMap(coordinator);
         docRef.set(data).get();
 
-        return coordinatorToDTO(coordinator);
+        return coordinatorToDTO(coordinator, 0);
     }
 
     // Get all coordinators
@@ -50,7 +62,14 @@ public class CoordinatorService {
 
         return documents.stream()
                 .map(this::documentToCoordinator)
-                .map(this::coordinatorToDTO)
+                .map(coordinator -> {
+                    try {
+                        int eventCount = eventService.getEventCountByCoordinator(coordinator.getId());
+                        return coordinatorToDTO(coordinator, eventCount);
+                    } catch (ExecutionException | InterruptedException e) {
+                        return coordinatorToDTO(coordinator, 0);
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
@@ -63,7 +82,8 @@ public class CoordinatorService {
         }
 
         Coordinator coordinator = documentToCoordinator(document);
-        return coordinatorToDTO(coordinator);
+        int eventCount = eventService.getEventCountByCoordinator(id);
+        return coordinatorToDTO(coordinator, eventCount);
     }
 
     // Update coordinator status (active/inactive)
@@ -82,7 +102,8 @@ public class CoordinatorService {
         docRef.update(updates).get();
 
         Coordinator coordinator = documentToCoordinator(docRef.get().get());
-        return coordinatorToDTO(coordinator);
+        int eventCount = eventService.getEventCountByCoordinator(id);
+        return coordinatorToDTO(coordinator, eventCount);
     }
 
     // Delete coordinator
@@ -105,7 +126,10 @@ public class CoordinatorService {
         data.put("lastName", coordinator.getLastName());
         data.put("phoneNumber", coordinator.getPhoneNumber());
         data.put("email", coordinator.getEmail());
-        data.put("degreeProgramme", coordinator.getDegreeProgramme());
+        data.put("department", coordinator.getDepartment());
+        data.put("degree", coordinator.getDegree());
+        data.put("shortIntroduction", coordinator.getShortIntroduction());
+        data.put("degreeProgramme", coordinator.getDegreeProgramme()); // Legacy field
         data.put("active", coordinator.isActive());
         data.put("createdAt", coordinator.getCreatedAt().toString());
         data.put("updatedAt", coordinator.getUpdatedAt().toString());
@@ -119,7 +143,10 @@ public class CoordinatorService {
         coordinator.setLastName(document.getString("lastName"));
         coordinator.setPhoneNumber(document.getString("phoneNumber"));
         coordinator.setEmail(document.getString("email"));
-        coordinator.setDegreeProgramme(document.getString("degreeProgramme"));
+        coordinator.setDepartment(document.getString("department"));
+        coordinator.setDegree(document.getString("degree"));
+        coordinator.setShortIntroduction(document.getString("shortIntroduction"));
+        coordinator.setDegreeProgramme(document.getString("degreeProgramme")); // Legacy field
         coordinator.setActive(document.getBoolean("active") != null ? document.getBoolean("active") : true);
         
         String createdAtStr = document.getString("createdAt");
@@ -135,15 +162,19 @@ public class CoordinatorService {
         return coordinator;
     }
 
-    private CoordinatorResponseDTO coordinatorToDTO(Coordinator coordinator) {
+    private CoordinatorResponseDTO coordinatorToDTO(Coordinator coordinator, int eventCount) {
         CoordinatorResponseDTO dto = new CoordinatorResponseDTO();
         dto.setId(coordinator.getId());
         dto.setFirstName(coordinator.getFirstName());
         dto.setLastName(coordinator.getLastName());
         dto.setPhoneNumber(coordinator.getPhoneNumber());
         dto.setEmail(coordinator.getEmail());
-        dto.setDegreeProgramme(coordinator.getDegreeProgramme());
+        dto.setDepartment(coordinator.getDepartment());
+        dto.setDegree(coordinator.getDegree());
+        dto.setShortIntroduction(coordinator.getShortIntroduction());
+        dto.setDegreeProgramme(coordinator.getDegreeProgramme()); // Legacy field
         dto.setActive(coordinator.isActive());
+        dto.setEventCount(eventCount);
         dto.setCreatedAt(coordinator.getCreatedAt());
         return dto;
     }

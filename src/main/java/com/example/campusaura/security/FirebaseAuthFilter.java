@@ -43,13 +43,22 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
                                   FilterChain filterChain)
       throws ServletException, IOException {
 
+    // Skip authentication for public endpoints
+    String requestPath = request.getRequestURI();
+    if (isPublicEndpoint(requestPath)) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
     String authHeader = request.getHeader("Authorization");
+    System.out.println("🔥 Authorization Header: " + authHeader);
 
     if (authHeader != null && authHeader.startsWith("Bearer ")) {
       String token = authHeader.substring(7);
 
       try {
         FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+        System.out.println("✅ Token verified");
 
         // Sync user to Firestore (create if first login, fetch if existing)
         User user = userService.getOrCreateUser(
@@ -90,6 +99,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
         logger.debug("Authenticated user: {} with role: {}", user.getUid(), role);
 
       } catch (Exception e) {
+        System.out.println("❌ Token verification failed: " + e.getMessage());
         logger.error("Firebase token validation failed: {}", e.getMessage());
         // Set status and let Spring Security handle the response
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -100,5 +110,18 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     }
 
     filterChain.doFilter(request, response);
+  }
+
+  /**
+   * Check if the request path is a public endpoint that doesn't require authentication
+   */
+  private boolean isPublicEndpoint(String path) {
+    return path.startsWith("/api/public/") ||
+           path.startsWith("/api/events/public/") ||
+           path.equals("/api/events/landing-page") ||
+           path.equals("/api/events/latest") ||
+           path.startsWith("/api/auth/validate-email") ||
+           path.startsWith("/api/auth/validate-registration") ||
+           path.startsWith("/api/auth/registration-info");
   }
 }

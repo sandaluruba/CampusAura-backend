@@ -14,12 +14,15 @@ public class LandingPageEventDTO {
     private String dateTime;
     private List<String> eventImageUrls;
     private String organizingDepartment;
+    private String category;
+    private Integer attendeeCount;
 
     public LandingPageEventDTO() {
     }
 
     public LandingPageEventDTO(String eventId, String title, String description, String venue, 
-                               String dateTime, List<String> eventImageUrls, String organizingDepartment) {
+                               String dateTime, List<String> eventImageUrls, String organizingDepartment,
+                               String category, Integer attendeeCount) {
         this.eventId = eventId;
         this.title = title;
         this.description = description;
@@ -27,6 +30,8 @@ public class LandingPageEventDTO {
         this.dateTime = dateTime;
         this.eventImageUrls = eventImageUrls;
         this.organizingDepartment = organizingDepartment;
+        this.category = category;
+        this.attendeeCount = attendeeCount;
     }
 
     // Getters and Setters
@@ -84,5 +89,21 @@ public class LandingPageEventDTO {
 
     public void setOrganizingDepartment(String organizingDepartment) {
         this.organizingDepartment = organizingDepartment;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public Integer getAttendeeCount() {
+        return attendeeCount;
+    }
+
+    public void setAttendeeCount(Integer attendeeCount) {
+        this.attendeeCount = attendeeCount;
     }
 }

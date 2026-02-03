@@ -38,6 +38,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/public/**").permitAll()
             .requestMatchers("/api/events/landing-page").permitAll()
+            .requestMatchers("/api/events/latest").permitAll()
+            .requestMatchers("/api/events/public/**").permitAll()
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/coordinator/**").hasAnyRole("ADMIN", "COORDINATOR")
             .requestMatchers("/api/auth/validate-email").permitAll()
@@ -68,7 +70,9 @@ public class SecurityConfig {
 
     // Allow your frontend URLs
     configuration.setAllowedOrigins(Arrays.asList(
-        "http://localhost:5173"    // Vite frontend (your current frontend)
+        "http://localhost:5173",    // Vite frontend (default port)
+        "http://localhost:5174",    // Vite frontend (alternate port)
+        "http://localhost:5175"     // Vite frontend (alternate port)
     ));
 
     // Allow all HTTP methods

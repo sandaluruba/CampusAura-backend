@@ -11,21 +11,23 @@ public class Product {
     private String imageUrl;
     private String sellerId;
     private String sellerName;
-    private ProductStatus status; // AVAILABLE, SOLD, DELETED
+    private ProductStatus status; // PENDING, APPROVED, AVAILABLE, SOLD, DELETED
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime soldAt;
 
     // Enum
     public enum ProductStatus {
-        AVAILABLE,
-        SOLD,
-        DELETED
+        PENDING,    // Awaiting admin approval
+        APPROVED,   // Approved by admin but not sold yet (same as AVAILABLE)
+        AVAILABLE,  // Available for purchase
+        SOLD,       // Successfully sold
+        DELETED     // Deleted/Disabled by admin or user
     }
 
     // Constructors
     public Product() {
-        this.status = ProductStatus.AVAILABLE;
+        this.status = ProductStatus.PENDING; // New products start as PENDING
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
