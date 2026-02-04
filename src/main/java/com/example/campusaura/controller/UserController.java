@@ -44,6 +44,25 @@ public class UserController {
     }
 
     /**
+     * Get user by UID (typically for fetching role and basic info).
+     * Can be used by frontend to determine user permissions.
+     * @param uid Firebase UID
+     */
+    @GetMapping("/{uid}")
+    public ResponseEntity<Map<String, Object>> getUserByUid(@PathVariable String uid) {
+        User user = userService.getUserByUid(uid);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("uid", user.getUid());
+        response.put("email", user.getEmail());
+        response.put("name", user.getName());
+        response.put("role", user.getRole());
+        response.put("verified", user.isVerified());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Get full user details from Firestore.
      * Returns complete User entity including verification status.
      */
