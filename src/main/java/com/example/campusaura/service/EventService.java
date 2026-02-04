@@ -349,6 +349,10 @@ public class EventService {
                     if (price instanceof Number) {
                         category.setPrice(((Number) price).doubleValue());
                     }
+                    Object availableCount = map.get("availableCount");
+                    if (availableCount instanceof Number) {
+                        category.setAvailableCount(((Number) availableCount).intValue());
+                    }
                     ticketCategories.add(category);
                 }
             }
