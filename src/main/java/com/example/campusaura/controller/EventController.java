@@ -135,12 +135,14 @@ public class EventController {
     /**
      * Get random ongoing events for landing page (PUBLIC - no authentication required)
      * GET /api/events/landing-page
+     * @param limit Optional query parameter to specify number of events (default: 10, max: 20)
      */
     @GetMapping("/landing-page")
-    public ResponseEntity<?> getLandingPageEvents() {
+    public ResponseEntity<?> getLandingPageEvents(@RequestParam(defaultValue = "10") int limit) {
         try {
-            // Get 5 random ongoing events
-            List<LandingPageEventDTO> events = eventService.getRandomOngoingEvents(5);
+            // Enforce maximum limit of 20 events
+            int effectiveLimit = Math.min(limit, 20);
+            List<LandingPageEventDTO> events = eventService.getRandomOngoingEvents(effectiveLimit);
             return ResponseEntity.ok(events);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

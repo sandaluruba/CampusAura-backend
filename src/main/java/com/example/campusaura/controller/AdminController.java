@@ -277,7 +277,7 @@ public class AdminController {
     @PostMapping("/events/{id}/approve")
     public ResponseEntity<EventResponseDTO> approveEvent(@PathVariable String id) {
         try {
-            EventResponseDTO event = eventService.updateEventStatus(id, "APPROVED");
+            EventResponseDTO event = eventService.updateEventStatus(id, "PUBLISHED");
             return ResponseEntity.ok(event);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
