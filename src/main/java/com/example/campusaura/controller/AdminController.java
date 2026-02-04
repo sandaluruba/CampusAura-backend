@@ -100,6 +100,24 @@ public class AdminController {
     }
 
     /**
+     * Update coordinator
+     * PUT /api/admin/coordinators/{id}
+     */
+    @PutMapping("/coordinators/{id}")
+    public ResponseEntity<CoordinatorResponseDTO> updateCoordinator(
+            @PathVariable String id, 
+            @RequestBody CoordinatorRequestDTO request) {
+        try {
+            CoordinatorResponseDTO coordinator = coordinatorService.updateCoordinator(id, request);
+            return ResponseEntity.ok(coordinator);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Update coordinator status (active/inactive)
      * PATCH /api/admin/coordinators/{id}/status
      */
@@ -191,13 +209,13 @@ public class AdminController {
     // ==================== EVENT MANAGEMENT SECTION ====================
 
     /**
-     * Get all events
+     * Get all events with coordinator names for admin management
      * GET /api/admin/events
      */
     @GetMapping("/events")
-    public ResponseEntity<List<EventResponseDTO>> getAllEvents() {
+    public ResponseEntity<List<AdminEventDTO>> getAllEvents() {
         try {
-            List<EventResponseDTO> events = eventService.getAllEvents();
+            List<AdminEventDTO> events = eventService.getAllEventsForAdmin();
             return ResponseEntity.ok(events);
         } catch (ExecutionException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

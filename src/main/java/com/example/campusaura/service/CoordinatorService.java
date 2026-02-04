@@ -3,8 +3,11 @@ package com.example.campusaura.service;
 import com.example.campusaura.dto.CoordinatorRequestDTO;
 import com.example.campusaura.dto.CoordinatorResponseDTO;
 import com.example.campusaura.model.Coordinator;
+import com.example.campusaura.security.Roles;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.UserRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,10 +25,43 @@ public class CoordinatorService {
     @Autowired
     private EventService eventService;
 
+    @Autowired
+    private UserService userService;
+
     private static final String COLLECTION_NAME = "coordinators";
 
     // Register a new coordinator
     public CoordinatorResponseDTO registerCoordinator(CoordinatorRequestDTO request) throws ExecutionException, InterruptedException {
+        String firebaseUid = null;
+        
+        try {
+            // Step 1: Create Firebase Auth user with email and password
+            if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                        .setEmail(request.getEmail())
+                        .setPassword(request.getPassword())
+                        .setDisplayName(request.getFirstName() + " " + request.getLastName())
+                        .setEmailVerified(true); // Auto-verify coordinator accounts
+                
+                UserRecord userRecord = FirebaseAuth.getInstance().createUser(createRequest);
+                firebaseUid = userRecord.getUid();
+                
+                // Step 2: Create user document in Firestore users collection with COORDINATOR role
+                Map<String, Object> userData = new HashMap<>();
+                userData.put("uid", firebaseUid);
+                userData.put("email", request.getEmail());
+                userData.put("name", request.getFirstName() + " " + request.getLastName());
+                userData.put("role", Roles.COORDINATOR);
+                userData.put("verified", true);
+                userData.put("createdAt", com.google.cloud.Timestamp.now());
+                
+                firestore.collection("users").document(firebaseUid).set(userData).get();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create Firebase Auth user: " + e.getMessage(), e);
+        }
+        
+        // Step 3: Create coordinator record in coordinators collection
         Coordinator coordinator = new Coordinator();
         coordinator.setFirstName(request.getFirstName());
         coordinator.setLastName(request.getLastName());
@@ -45,7 +81,7 @@ public class CoordinatorService {
         coordinator.setCreatedAt(LocalDateTime.now());
         coordinator.setUpdatedAt(LocalDateTime.now());
 
-        // Add to Firestore
+        // Add to Firestore coordinators collection
         DocumentReference docRef = firestore.collection(COLLECTION_NAME).document();
         coordinator.setId(docRef.getId());
         
@@ -82,6 +118,32 @@ public class CoordinatorService {
         }
 
         Coordinator coordinator = documentToCoordinator(document);
+        int eventCount = eventService.getEventCountByCoordinator(id);
+        return coordinatorToDTO(coordinator, eventCount);
+    }
+
+    // Update coordinator
+    public CoordinatorResponseDTO updateCoordinator(String id, CoordinatorRequestDTO request) throws ExecutionException, InterruptedException {
+        DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(id);
+        DocumentSnapshot document = docRef.get().get();
+
+        if (!document.exists()) {
+            throw new RuntimeException("Coordinator not found with id: " + id);
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("firstName", request.getFirstName());
+        updates.put("lastName", request.getLastName());
+        updates.put("phoneNumber", request.getPhoneNumber());
+        updates.put("email", request.getEmail());
+        updates.put("department", request.getDepartment());
+        updates.put("degree", request.getDegree());
+        updates.put("shortIntroduction", request.getShortIntroduction());
+        updates.put("updatedAt", LocalDateTime.now().toString());
+
+        docRef.update(updates).get();
+
+        Coordinator coordinator = documentToCoordinator(docRef.get().get());
         int eventCount = eventService.getEventCountByCoordinator(id);
         return coordinatorToDTO(coordinator, eventCount);
     }

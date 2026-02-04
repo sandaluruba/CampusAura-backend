@@ -1,10 +1,14 @@
 package com.example.campusaura.service;
 
+import com.example.campusaura.dto.AdminEventDTO;
 import com.example.campusaura.dto.EventDetailDTO;
 import com.example.campusaura.dto.EventRequestDTO;
 import com.example.campusaura.dto.EventResponseDTO;
 import com.example.campusaura.dto.LandingPageEventDTO;
+import com.example.campusaura.model.Coordinator;
 import com.example.campusaura.model.Event;
+import com.example.campusaura.model.EventAccountDetails;
+import com.example.campusaura.model.EventScheduleItem;
 import com.example.campusaura.model.PastEventDetail;
 import com.example.campusaura.model.SellItem;
 import com.example.campusaura.model.TicketCategory;
@@ -53,6 +57,8 @@ public class EventService {
         event.setAttendeeCount(0);  // Initialize with 0 attendees
         event.setCreatedAt(timestamp);
         event.setUpdatedAt(timestamp);
+        event.setSchedule(eventRequest.getSchedule());
+        event.setAccountDetails(eventRequest.getAccountDetails());
 
         // Convert to Map for Firestore
         Map<String, Object> eventData = convertEventToMap(event);
@@ -313,6 +319,8 @@ public class EventService {
         map.put("attendeeCount", event.getAttendeeCount());
         map.put("createdAt", event.getCreatedAt());
         map.put("updatedAt", event.getUpdatedAt());
+        map.put("schedule", event.getSchedule());
+        map.put("accountDetails", event.getAccountDetails());
         return map;
     }
 
@@ -418,6 +426,37 @@ public class EventService {
             event.setUpdatedAt(((com.google.cloud.Timestamp) updatedAt).toDate().toInstant().toString());
         } else if (updatedAt instanceof String) {
             event.setUpdatedAt((String) updatedAt);
+        // Convert schedule from List<Map> to List<EventScheduleItem>
+        List<EventScheduleItem> scheduleItems = new ArrayList<>();
+        Object scheduleObj = data.get("schedule");
+        if (scheduleObj instanceof List) {
+            for (Object item : (List) scheduleObj) {
+                if (item instanceof Map) {
+                    Map<String, Object> map = (Map<String, Object>) item;
+                    EventScheduleItem scheduleItem = new EventScheduleItem();
+                    scheduleItem.setId((String) map.get("id"));
+                    scheduleItem.setTitle((String) map.get("title"));
+                    scheduleItem.setTime((String) map.get("time"));
+                    scheduleItem.setDuration((String) map.get("duration"));
+                    scheduleItems.add(scheduleItem);
+                }
+            }
+        }
+        event.setSchedule(scheduleItems);
+        
+        // Convert accountDetails from Map to EventAccountDetails
+        Object accountDetailsObj = data.get("accountDetails");
+        if (accountDetailsObj instanceof Map) {
+            Map<String, Object> map = (Map<String, Object>) accountDetailsObj;
+            EventAccountDetails accountDetails = new EventAccountDetails();
+            accountDetails.setAccountName((String) map.get("accountName"));
+            accountDetails.setAccountNumber((String) map.get("accountNumber"));
+            accountDetails.setEmail((String) map.get("email"));
+            accountDetails.setPhone((String) map.get("phone"));
+            accountDetails.setRole((String) map.get("role"));
+            event.setAccountDetails(accountDetails);
+        }
+        
         }
         
         return event;
@@ -657,6 +696,68 @@ public class EventService {
             throw new RuntimeException("Event not found with id: " + eventId);
         }
         return eventToDetailDTO(event);
+    }
+
+    /**
+     * Get all events for admin with coordinator names
+     */
+    public List<AdminEventDTO> getAllEventsForAdmin() throws ExecutionException, InterruptedException {
+        List<QueryDocumentSnapshot> documents = firestore.collection(COLLECTION_NAME)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<AdminEventDTO> adminEvents = new ArrayList<>();
+        for (QueryDocumentSnapshot doc : documents) {
+            Event event = convertMapToEvent(doc.getId(), doc.getData());
+            String coordinatorName = getCoordinatorName(event.getCoordinatorId());
+            AdminEventDTO adminEventDTO = eventToAdminEventDTO(event, coordinatorName);
+            adminEvents.add(adminEventDTO);
+        }
+
+        return adminEvents;
+    }
+
+    /**
+     * Get coordinator name by ID
+     */
+    private String getCoordinatorName(String coordinatorId) {
+        try {
+            DocumentSnapshot doc = firestore.collection("coordinators")
+                    .document(coordinatorId)
+                    .get()
+                    .get();
+            
+            if (doc.exists()) {
+                String firstName = (String) doc.getData().get("firstName");
+                String lastName = (String) doc.getData().get("lastName");
+                return firstName + " " + lastName;
+            }
+            return "Unknown Coordinator";
+        } catch (Exception e) {
+            return "Unknown Coordinator";
+        }
+    }
+
+    /**
+     * Convert Event to AdminEventDTO
+     */
+    private AdminEventDTO eventToAdminEventDTO(Event event, String coordinatorName) {
+        AdminEventDTO dto = new AdminEventDTO();
+        dto.setEventId(event.getEventId());
+        dto.setTitle(event.getTitle());
+        dto.setCoordinatorId(event.getCoordinatorId());
+        dto.setCoordinatorName(coordinatorName);
+        dto.setVenue(event.getVenue());
+        dto.setDateTime(event.getDateTime());
+        dto.setDescription(event.getDescription());
+        dto.setOrganizingDepartment(event.getOrganizingDepartment());
+        dto.setStatus(event.getStatus());
+        dto.setCategory(event.getCategory());
+        dto.setCreatedAt(event.getCreatedAt());
+        dto.setUpdatedAt(event.getUpdatedAt());
+        dto.setAttendeeCount(event.getAttendeeCount());
+        return dto;
     }
 
     /**
