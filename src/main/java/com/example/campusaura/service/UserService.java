@@ -5,6 +5,7 @@ import com.example.campusaura.model.entity.User;
 /**
  * Service interface for User business logic.
  * Manages sync between Firebase Auth and Firestore user data.
+ * Used for authentication and role management.
  */
 public interface UserService {
 
