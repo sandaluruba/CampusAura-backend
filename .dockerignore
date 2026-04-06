@@ -1,0 +1,34 @@
+# Build output (re-built inside Docker)
+target/
+
+# IDE & OS
+.idea/
+.vscode/
+*.iml
+*.iws
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Logs
+*.log
+logs/
+
+# Maven wrapper (not needed — base image has Maven)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Documentation
+docs/
+scripts/
+README.md
+HELP.md
+
+# Node (scripts folder artefacts)
+node_modules/
+package-lock.json
