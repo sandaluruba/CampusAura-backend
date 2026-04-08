@@ -74,9 +74,6 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
 
-    // Parse comma-separated origins from environment variable / application.properties
-    // Local dev defaults: localhost Vite ports
-    // Production: include your Vercel URL(s) via CORS_ALLOWED_ORIGINS env var
     List<String> origins = Arrays.stream(corsAllowedOrigins.split(","))
         .map(String::trim)
         .filter(s -> !s.isEmpty())
