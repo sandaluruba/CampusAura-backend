@@ -41,6 +41,8 @@ public class SecurityConfig {
             .requestMatchers("/api/events/latest").permitAll()
             .requestMatchers("/api/events/public/**").permitAll()
             .requestMatchers("/api/firestore/products").permitAll()
+            .requestMatchers("/api/payments/**").authenticated()
+            .requestMatchers("/api/events/*/feedback").authenticated()
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/coordinator/**").hasAnyRole("ADMIN", "COORDINATOR")
             .requestMatchers("/api/auth/validate-email").permitAll()
