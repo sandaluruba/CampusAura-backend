@@ -36,3 +36,4 @@ src/main/resources/firebase-service-account.json
 
 node_modules/
 
+.env
