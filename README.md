@@ -1,109 +1,128 @@
-# CampusAura Backend
+<h1 align="center">CampusAura Backend API</h1>
 
-CampusAura is a modern campus engagement platform that brings together event discovery, ticketing, fundraising, and a student marketplace in one system.
+<div align="center">
+  <img src="https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 17" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.0-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot" />
+  <img src="https://img.shields.io/badge/Firebase-Admin-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Stripe-Payment-008CDD?style=for-the-badge&logo=stripe&logoColor=white" alt="Stripe" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Azure-Container_Apps-0089D6?style=for-the-badge&logo=microsoft-azure&logoColor=white" alt="Azure" />
+</div>
 
-This repository contains the **Spring Boot backend**, which serves as the core API for the platform. It handles secure user authentication, role-based access control, business logic for the marketplace, and seamless integration with Firebase Firestore.
+## 📌 Project Overview
 
-## Overview
+CampusAura is an enterprise-grade campus community platform designed to streamline event discovery, secure ticketing, fundraising, and a student-exclusive marketplace.
 
-The backend is built with security and scalability in mind. It uses Firebase Authentication to issue and validate JWT tokens, ensuring that all API endpoints are secure. Users are automatically synced to Firestore, and roles are dynamically assigned based on university email domains.
+This repository hosts the **Spring Boot Microservice/Backend API**, providing a robust, highly available, and secure foundation for the platform. Built with a focus on modern software engineering principles, the system leverages containerization, cloud-native deployments, and strict role-based access control (RBAC).
 
-## Key Features
+🔗 **Live Frontend**: [campus-aura-frontend.vercel.app](https://campus-aura-frontend.vercel.app)  
+🔗 **Production API Endpoint**: [campusaura-backend.lemontree-0868690c.centralindia.azurecontainerapps.io](https://campusaura-backend.lemontree-0868690c.centralindia.azurecontainerapps.io)  
 
-- **Secure RESTful API**: Protected endpoints with Firebase JWT token validation.
-- **Role-Based Access Control**: Granular permissions for 4 distinct roles (`ADMIN`, `COORDINATOR`, `STUDENT`, `EXTERNAL_USER`).
-- **Smart Role Assignment**: Automatic role provisioning based on registered email domains (e.g., `@std.uwu.ac.lk` for students).
-- **Marketplace Business Rules**: Access control logic (e.g., restricting external users from selling items).
-- **Firestore Integration**: Seamless data storage and retrieval using Google Cloud Firestore.
-- **Health Monitoring**: Spring Boot Actuator endpoints configured for Azure deployment probes.
+---
 
-## Live Environment
+## 🏗️ Architecture & Engineering Practices
 
-🔗 **Frontend Application**: https://campus-aura-frontend.vercel.app  
-🔗 **Backend API**: https://campusaura-backend.lemontree-0868690c.centralindia.azurecontainerapps.io  
+As a showcase of professional software engineering, this project implements the following practices:
 
-## Tech Stack
+- **Layered Architecture (N-Tier)**: Strict separation of concerns across Controllers, Services, Repositories, and Security layers to ensure maintainability, scalability, and testability.
+- **RESTful API Design**: Predictable resource-oriented URIs, standardized HTTP methods, and unified JSON error handling with proper HTTP status codes.
+- **Stateless Authentication**: Leveraging Firebase JWTs for stateless, highly scalable API security without session overhead.
+- **Containerization**: Fully Dockerized environment ensuring parity across local development, CI/CD, and production.
+- **Cloud-Native Deployment**: Hosted on Microsoft Azure Container Apps for automatic scaling, load balancing, and high availability.
+- **Secure Secrets Management**: Environment variables and secure volume-mounted secrets are utilized instead of hardcoded credentials.
 
-- **Java 17**
-- **Spring Boot 3**
-- **Firebase Admin SDK** (Authentication & Firestore)
-- **Maven** for dependency management
-- **Docker** for containerization
-- **Azure Container Apps** for hosting
+---
 
-## Project Structure
+## 🚀 Key Features
 
-- `src/main/java/.../config/` - Firebase initialization and Spring Security configurations.
-- `src/main/java/.../controller/` - RESTful API endpoints for Auth, Users, Events, and Marketplace.
-- `src/main/java/.../model/` - Data models and entities representing the business domain.
-- `src/main/java/.../repository/` - Firestore data access implementations.
-- `src/main/java/.../security/` - Custom JWT authentication filters and role constants.
-- `src/main/java/.../service/` - Core business logic and service layers.
-- `src/main/java/.../util/` - Utility classes, including email domain validation.
+### Security & Identity Management
+- **Firebase Auth Integration**: Intercepts and validates JWTs via custom Spring Security filters.
+- **Dynamic Role-Based Access Control (RBAC)**: Supports `ADMIN`, `COORDINATOR`, `STUDENT`, and `EXTERNAL_USER` roles.
+- **Smart Domain Verification**: Automatically assigns roles based on the authenticated user's email domain (e.g., auto-promoting `@std.uwu.ac.lk` to `STUDENT`).
 
-## Getting Started
+### Core Business Domains
+- **Event & Ticketing Engine**: Securely manages event lifecycles. Integrated with **Stripe** for seamless ticket purchasing and payment workflows.
+- **Student Marketplace**: A peer-to-peer ecosystem with restricted access logic (only verified students can create listings).
+- **Fundraising Module**: Handles donation tracking and campaign management.
 
-### Prerequisites
+### Cloud & Database
+- **Firestore Database**: NoSQL document store for highly flexible and fast read/write operations.
+- **File & Image Uploads**: Secure handling of multipart file uploads for event banners and marketplace product images.
 
-- Java 17 or higher
-- Maven 3.6+
-- Firebase project with Authentication and Firestore enabled
-- Firebase service account credentials (`firebase-service-account.json`)
+---
 
-### Installation
+## 🐳 Docker & Containerization
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd CampusAura-backend
-   ```
+The project is fully containerized, making it resilient, platform-agnostic, and easy to deploy.
 
-2. **Configure Firebase**
-   Place your `firebase-service-account.json` in the `src/main/resources/` directory.
-
-3. **Environment Setup**
-   Update `src/main/resources/application.properties` or use environment variables:
-   ```properties
-   firebase.service-account-key=classpath:firebase-service-account.json
-   firebase.database-url=https://your-project.firebaseio.com
-   ```
-
-### Development
-
-Run the application locally using the Maven wrapper:
+- **Dockerfile**: Optimized multi-stage build using a robust Linux base image (`Ubuntu Jammy`) to ensure native library compatibility (specifically resolving SIGSEGV issues with gRPC/Netty dependencies required by Firebase).
+- **Docker Compose**: Orchestrates local development, handling environment variable injection and secure credential mounting.
 
 ```bash
-./mvnw spring-boot:run
-```
-
-The server will start at `http://localhost:8080`.
-
-## Docker Configuration
-
-The application is fully containerized for seamless development and production deployment. The repository includes a `Dockerfile` for building the application image and a `docker-compose.yml` for local orchestration.
-
-### Building the Image
-
-To build the Docker image locally, run the following command from the project root:
-
-```bash
+# Build the production-ready image locally
 docker build -t campusaura-backend .
-```
 
-### Running with Docker Compose
-
-For a complete local setup, you can start the backend using Docker Compose. Make sure your `firebase-service-account.json` is correctly placed so it can be mounted securely into the container.
-
-```bash
+# Run the full stack locally with Docker Compose
 docker-compose up -d --build
 ```
 
-The container will expose the API on port `8080`. To stop the container, use `docker-compose down`.
+---
 
-## Deployment
+## ☁️ Deployment Pipeline (Azure)
 
-This backend is containerized and ready to deploy on **Azure Container Apps**.
+The backend is configured for continuous delivery and is currently deployed to **Microsoft Azure Container Apps** directly from the Azure Container Registry. 
 
-- **Docker**: The project includes a `Dockerfile` for building production-ready images.
-- **CI/CD**: Automated deployment is managed via GitHub Actions (`.github/workflows/deploy-backend.yml`).
-- **Secrets Management**: Sensitive configuration, such as the Firebase service account key and CORS allowed origins, should be securely passed to the container environment during deployment.
+**Deployment Highlights:**
+1. **Continuous Integration**: Automated via GitHub Actions (`.github/workflows/deploy-backend.yml`).
+2. **Serverless Infrastructure**: Utilizes Azure Container Apps to minimize operational overhead while maximizing scalability to meet student traffic spikes.
+3. **Health Probes**: Integrated with Spring Boot Actuator to expose `/actuator/health` endpoints, allowing Azure to route traffic only to healthy container instances and gracefully manage container restarts.
+
+---
+
+## 💻 Tech Stack Summary
+
+| Category | Technologies |
+|---|---|
+| **Language & Framework** | Java 17, Spring Boot 3.x, Spring Security |
+| **Authentication & DB** | Firebase Authentication, Google Cloud Firestore |
+| **Payments** | Stripe API |
+| **Build & Tooling** | Maven, Git, GitHub Actions |
+| **DevOps & Cloud** | Docker, Docker Compose, Azure Container Apps, Azure Container Registry (ACR) |
+
+---
+
+## 🛠️ Local Development Guide
+
+### Prerequisites
+- Java 17+ & Maven 3.6+
+- Docker & Docker Desktop (Optional but recommended)
+- Firebase Service Account Key (`firebase-service-account.json`)
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/sandaluruba/CampusAura-backend.git
+   cd CampusAura-backend
+   ```
+
+2. **Configure Secrets**
+   Place your `firebase-service-account.json` into the `src/main/resources/` directory.
+
+3. **Run via Maven**
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+
+4. **Run via Docker**
+   Ensure the `docker-compose.yml` points to the correct secret path, then execute:
+   ```bash
+   docker-compose up -d
+   ```
+
+The server will initialize and bind to `http://localhost:8080`.
+
+---
+<div align="center">
+  <i>Developed to demonstrate robust, scalable, and modern Software Engineering principles.</i>
+</div>
