@@ -11,8 +11,11 @@ public class DashboardStatsDTO {
     private double productsPercentageChange;
     private long productsSold;
     private boolean productsSoldIsNew;
+    private long publishedEvents;
+    private long draftEvents;
     private List<EventResponseDTO> recentEvents;
     private List<TopCoordinatorDTO> topCoordinators;
+
 
     // Constructors
     public DashboardStatsDTO() {}
@@ -80,6 +83,22 @@ public class DashboardStatsDTO {
 
     public void setProductsSoldIsNew(boolean productsSoldIsNew) {
         this.productsSoldIsNew = productsSoldIsNew;
+    }
+
+    public long getPublishedEvents() {
+        return publishedEvents;
+    }
+
+    public void setPublishedEvents(long publishedEvents) {
+        this.publishedEvents = publishedEvents;
+    }
+
+    public long getDraftEvents() {
+        return draftEvents;
+    }
+
+    public void setDraftEvents(long draftEvents) {
+        this.draftEvents = draftEvents;
     }
 
     public List<EventResponseDTO> getRecentEvents() {
