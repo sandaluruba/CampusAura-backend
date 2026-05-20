@@ -39,6 +39,15 @@ public class EventDetailDTO {
     // Event status
     private String status;
 
+    // Coordinator's degree programme (shown in Organized By section)
+    private String coordinatorDegree;
+
+    // Coordinator's email for receipt sending
+    private String coordinatorEmail;
+
+    // Payment / bank account details set by the coordinator
+    private AccountInfo accountDetails;
+
     public EventDetailDTO() {
     }
 
@@ -179,7 +188,62 @@ public class EventDetailDTO {
         this.status = status;
     }
 
-    // Inner classes for structured data
+    public String getCoordinatorDegree() {
+        return coordinatorDegree;
+    }
+
+    public void setCoordinatorDegree(String coordinatorDegree) {
+        this.coordinatorDegree = coordinatorDegree;
+    }
+
+    public String getCoordinatorEmail() {
+        return coordinatorEmail;
+    }
+
+    public void setCoordinatorEmail(String coordinatorEmail) {
+        this.coordinatorEmail = coordinatorEmail;
+    }
+
+    public AccountInfo getAccountDetails() {
+        return accountDetails;
+    }
+
+    public void setAccountDetails(AccountInfo accountDetails) {
+        this.accountDetails = accountDetails;
+    }
+
+    // ── Inner class: flat account info for JSON serialisation ──
+    public static class AccountInfo {
+        private String accountName;
+        private String accountNumber;
+        private String email;
+        private String phone;
+        private String role;
+
+        public AccountInfo() {}
+
+        public AccountInfo(String accountName, String accountNumber,
+                           String email, String phone, String role) {
+            this.accountName   = accountName;
+            this.accountNumber = accountNumber;
+            this.email         = email;
+            this.phone         = phone;
+            this.role          = role;
+        }
+
+        public String getAccountName()   { return accountName; }
+        public void setAccountName(String v)   { this.accountName = v; }
+        public String getAccountNumber() { return accountNumber; }
+        public void setAccountNumber(String v) { this.accountNumber = v; }
+        public String getEmail()         { return email; }
+        public void setEmail(String v)         { this.email = v; }
+        public String getPhone()         { return phone; }
+        public void setPhone(String v)         { this.phone = v; }
+        public String getRole()          { return role; }
+        public void setRole(String v)          { this.role = v; }
+    }
+
+    // ── Inner classes for structured data ──
     public static class ScheduleItem {
         private String time;
         private String event;

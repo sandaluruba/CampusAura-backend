@@ -3,6 +3,7 @@ package com.example.campusaura.controller;
 import com.example.campusaura.dto.ProductSaleDTO;
 import com.example.campusaura.dto.TicketSaleDTO;
 import com.example.campusaura.model.User;
+import com.example.campusaura.service.EventService;
 import com.example.campusaura.service.SalesService;
 import com.example.campusaura.service.UserService;
 import com.google.firebase.auth.FirebaseAuth;
@@ -35,6 +36,9 @@ public class PaymentController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private EventService eventService;
 
     @PostConstruct
     public void init() {
@@ -98,7 +102,33 @@ public class PaymentController {
             saleData.setUserEmail(user.getEmail());
 
             TicketSaleDTO saved = salesService.saveTicketSale(saleData);
+
+            // Decrement the ticket availableCount on the event document
+            if (saleData.getEventId() != null && saleData.getTicketCategory() != null) {
+                try {
+                    eventService.decrementTicketCount(
+                        saleData.getEventId(),
+                        saleData.getTicketCategory(),
+                        saleData.getTicketCount()
+                    );
+                } catch (Exception decEx) {
+                    // Log but do not fail the purchase — sale is already recorded
+                    System.err.println("[PaymentController] Warning: Could not decrement ticket count: " + decEx.getMessage());
+                }
+
+                // Increment attendeeCount by the number of tickets purchased
+                try {
+                    eventService.incrementAttendeeCount(
+                        saleData.getEventId(),
+                        saleData.getTicketCount()
+                    );
+                } catch (Exception attEx) {
+                    System.err.println("[PaymentController] Warning: Could not increment attendee count: " + attEx.getMessage());
+                }
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to confirm ticket purchase: " + e.getMessage());

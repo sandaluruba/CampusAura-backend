@@ -100,6 +100,87 @@ public class EventService {
     }
 
     /**
+     * Decrement the availableCount for a specific ticket category on an event.
+     * Called after a successful ticket purchase to keep inventory in sync.
+     *
+     * @param eventId       ID of the event
+     * @param categoryName  Name of the ticket category bought (e.g. "VIP")
+     * @param quantity      Number of tickets purchased
+     */
+    @SuppressWarnings("unchecked")
+    public void decrementTicketCount(String eventId, String categoryName, int quantity)
+            throws ExecutionException, InterruptedException {
+
+        DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(eventId);
+
+        firestore.runTransaction(transaction -> {
+            DocumentSnapshot snap = transaction.get(docRef).get();
+            if (!snap.exists()) {
+                throw new RuntimeException("Event not found: " + eventId);
+            }
+
+            // ticketCategories is stored as a List<Map<String,Object>> in Firestore
+            List<Map<String, Object>> categories = new ArrayList<>();
+            Object rawCats = snap.get("ticketCategories");
+            if (rawCats instanceof List) {
+                for (Object item : (List<?>) rawCats) {
+                    if (item instanceof Map) {
+                        categories.add(new HashMap<>((Map<String, Object>) item));
+                    }
+                }
+            }
+
+            boolean found = false;
+            for (Map<String, Object> cat : categories) {
+                String name = (String) cat.get("categoryName");
+                if (name != null && name.equalsIgnoreCase(categoryName)) {
+                    Object countObj = cat.get("availableCount");
+                    int current = countObj instanceof Number ? ((Number) countObj).intValue() : 0;
+                    if (current < quantity) {
+                        throw new RuntimeException(
+                            "Not enough tickets available for category '" + categoryName +
+                            "'. Requested: " + quantity + ", Available: " + current);
+                    }
+                    cat.put("availableCount", current - quantity);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                throw new RuntimeException("Ticket category '" + categoryName + "' not found in event " + eventId);
+            }
+
+            transaction.update(docRef, "ticketCategories", categories);
+            return null;
+        }).get();
+    }
+
+    /**
+     * Increment attendeeCount on an event when tickets are purchased.
+     * Uses a Firestore transaction so the counter is always consistent.
+     *
+     * @param eventId  ID of the event
+     * @param quantity Number of tickets bought (added to current count)
+     */
+    public void incrementAttendeeCount(String eventId, int quantity)
+            throws ExecutionException, InterruptedException {
+
+        DocumentReference docRef = firestore.collection(COLLECTION_NAME).document(eventId);
+
+        firestore.runTransaction(transaction -> {
+            DocumentSnapshot snap = transaction.get(docRef).get();
+            if (!snap.exists()) {
+                throw new RuntimeException("Event not found: " + eventId);
+            }
+            Object countObj = snap.get("attendeeCount");
+            long current = countObj instanceof Number ? ((Number) countObj).longValue() : 0L;
+            transaction.update(docRef, "attendeeCount", current + quantity);
+            return null;
+        }).get();
+    }
+
+    /**
      * Get all events (returns Event objects)
      */
     public List<Event> getAllEventsInternal() throws ExecutionException, InterruptedException {
@@ -785,8 +866,7 @@ public class EventService {
         // Ticket information
         dto.setTicketsAvailable(event.getTicketsAvailable());
         dto.setTicketCategories(event.getTicketCategories());
-        dto.setTotalSpots(500); // Default total spots
-        dto.setAvailableSpots(180); // Default available spots (can be calculated from actual bookings)
+        // totalSpots/availableSpots removed — not relevant to real data
         
         // Extract schedule from pastEventDetails if available
         List<EventDetailDTO.ScheduleItem> schedule = new ArrayList<>();
@@ -810,26 +890,63 @@ public class EventService {
         }
         dto.setGalleryImages(galleryImages);
         
-        // Convert sellItems to sponsors
+        // Convert sellItems to sponsors — only if coordinator actually added sellItems
         List<EventDetailDTO.Sponsor> sponsors = new ArrayList<>();
-        if (event.getSellItems() != null && !event.getSellItems().isEmpty()) {
+        if (event.getSellItems() != null) {
             for (SellItem item : event.getSellItems()) {
                 EventDetailDTO.Sponsor sponsor = new EventDetailDTO.Sponsor();
                 sponsor.setName(item.getItemName());
-                sponsor.setTier("Standard");
-                sponsor.setAmount(item.getPrice() != null ? "$" + item.getPrice() : "TBA");
-                sponsor.setLogo("🏢"); // Default logo
+                sponsor.setTier(item.getDescription() != null ? item.getDescription() : "Sponsor");
+                sponsor.setAmount(item.getPrice() != null ? "LKR " + item.getPrice().longValue() : "TBA");
+                sponsor.setLogo("🏢");
                 sponsors.add(sponsor);
             }
         }
-        // If no sponsors from sellItems, add default sponsors
-        if (sponsors.isEmpty()) {
-            sponsors.add(new EventDetailDTO.Sponsor("Platinum", "$10,000+", "🏢", "Platinum Sponsor"));
-            sponsors.add(new EventDetailDTO.Sponsor("Gold", "$5,000+", "⭐", "Gold Sponsor"));
-            sponsors.add(new EventDetailDTO.Sponsor("Silver", "$1,000+", "🎯", "Silver Sponsor"));
+        dto.setSponsors(sponsors); // empty list → frontend hides the whole section
+
+        // Look up coordinator info (degree + email) in a single Firestore read
+        String[] coordInfo = getCoordinatorInfo(event.getCoordinatorId()); // [0]=degree, [1]=email
+        dto.setCoordinatorDegree(coordInfo[0]);
+        dto.setCoordinatorEmail(coordInfo[1]);
+
+        // Copy account details if coordinator filled them in
+        if (event.getAccountDetails() != null) {
+            com.example.campusaura.model.EventAccountDetails src = event.getAccountDetails();
+            EventDetailDTO.AccountInfo acct = new EventDetailDTO.AccountInfo(
+                src.getAccountName(),
+                src.getAccountNumber(),
+                src.getEmail(),
+                src.getPhone(),
+                src.getRole()
+            );
+            dto.setAccountDetails(acct);
         }
-        dto.setSponsors(sponsors);
-        
+
         return dto;
     }
-}
+
+    /**
+     * Fetch coordinator degree and email in a single Firestore read.
+     * Returns String[2]: [0] = degree/degreeProgramme, [1] = email
+     */
+    private String[] getCoordinatorInfo(String coordinatorId) {
+        try {
+            if (coordinatorId == null) return new String[]{null, null};
+            DocumentSnapshot doc = firestore.collection("coordinators")
+                    .document(coordinatorId)
+                    .get()
+                    .get();
+            if (doc.exists()) {
+                String degree = (String) doc.getData().get("degree");
+                if (degree == null || degree.isEmpty()) {
+                    degree = (String) doc.getData().get("degreeProgramme");
+                }
+                String email = (String) doc.getData().get("email");
+                return new String[]{ degree, email };
+            }
+            return new String[]{null, null};
+        } catch (Exception e) {
+            return new String[]{null, null};
+        }
+    }
+
