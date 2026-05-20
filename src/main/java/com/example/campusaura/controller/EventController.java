@@ -4,8 +4,10 @@ import com.example.campusaura.dto.EventDetailDTO;
 import com.example.campusaura.dto.EventRequestDTO;
 import com.example.campusaura.dto.EventResponseDTO;
 import com.example.campusaura.dto.LandingPageEventDTO;
+import com.example.campusaura.dto.TicketSaleDTO;
 import com.example.campusaura.model.Event;
 import com.example.campusaura.service.EventService;
+import com.example.campusaura.service.SalesService;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
@@ -18,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/events")
@@ -26,6 +29,9 @@ public class EventController {
 
     @Autowired
     private EventService eventService;
+
+    @Autowired
+    private SalesService salesService;
 
     /**
      * Create a new event
@@ -129,6 +135,28 @@ public class EventController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorResponse("Failed to retrieve your events: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get ticket sales for all events managed by the authenticated coordinator
+     * GET /api/events/coordinator/ticket-sales
+     */
+    @GetMapping("/coordinator/ticket-sales")
+    public ResponseEntity<?> getCoordinatorTicketSales(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String coordinatorId = extractUserIdFromToken(authHeader);
+            // Get all events owned by this coordinator
+            List<Event> myEvents = eventService.getEventsByCoordinator(coordinatorId);
+            List<String> myEventIds = myEvents.stream()
+                    .map(Event::getEventId)
+                    .collect(Collectors.toList());
+            // Get ticket sales filtered to those event IDs
+            List<TicketSaleDTO> sales = salesService.getTicketSalesByEventIds(myEventIds);
+            return ResponseEntity.ok(sales);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorResponse("Failed to retrieve ticket sales: " + e.getMessage()));
         }
     }
 

@@ -48,6 +48,24 @@ public class SalesService {
         return sale;
     }
 
+    public List<TicketSaleDTO> getTicketSalesByEventIds(List<String> eventIds) throws ExecutionException, InterruptedException {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<QueryDocumentSnapshot> docs = firestore.collection(TICKET_SALES_COLLECTION)
+                .get().get().getDocuments();
+
+        return docs.stream()
+                .map(this::docToTicketSale)
+                .filter(sale -> sale.getEventId() != null && eventIds.contains(sale.getEventId()))
+                .sorted((a, b) -> {
+                    String dateA = a.getPurchasedAt() != null ? a.getPurchasedAt() : "";
+                    String dateB = b.getPurchasedAt() != null ? b.getPurchasedAt() : "";
+                    return dateB.compareTo(dateA); // DESC
+                })
+                .collect(Collectors.toList());
+    }
+
     public List<TicketSaleDTO> getAllTicketSales() throws ExecutionException, InterruptedException {
         List<QueryDocumentSnapshot> docs = firestore.collection(TICKET_SALES_COLLECTION)
                 .get().get().getDocuments();
